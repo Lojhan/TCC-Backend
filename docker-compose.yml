@@ -1,0 +1,86 @@
+version: "3.9"
+
+networks:
+  tcc:
+    driver: bridge
+
+services:
+  postgres-tcc:
+    container_name: postgres-tcc
+    image: postgres
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB: "tcc"
+    ports:
+      - "5432:5432"
+    volumes:
+      - .:/app
+    working_dir: /app
+    networks:
+      - tcc
+  zookeeper-tcc:
+    container_name: zookeeper-tcc
+    image: docker.io/bitnami/zookeeper:3.8
+    ports:
+      - "2181:2181"
+    volumes:
+      - "zookeeper_data:/bitnami"
+    networks:
+      - tcc
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+  kafka-tcc:
+    container_name: kafka-tcc
+    image: docker.io/bitnami/kafka:3.2
+    ports:
+      - "9092:9092"
+    volumes:
+      - "kafka_data:/bitnami"
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper-tcc:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    networks:
+      - tcc
+    depends_on:
+      - zookeeper
+  cnn-service-tcc: 
+    container_name: cnn-service-tcc
+    build: 
+      context: ./cnn-service
+      dockerfile: Dockerfile
+    ports:
+      - '8080:80'
+    working_dir: /app
+    command: python main.py
+    networks:
+      - tcc
+    volumes:
+      - ./cnn-service:/app
+    depends_on:
+      - rabbitmq-server 
+      - kafka-tcc
+  # predictions-service-tcc:
+  #   container_name: predictions-service-tcc
+  #   image: node:18.7.0
+  #   environment:
+  #     - DATABASE_URL=postgres://postgres:postgres@postgres-tcc:5432/tcc
+  #     - KAFKA_URL=kafka-tcc:9092
+  #   ports:
+  #     - '3000:3000'
+  #   working_dir: /app
+  #   command: npm run start:dev
+  #   networks:
+  #     - tcc
+  #   volumes:
+  #     - ./predictions-service:/app
+  #   depends_on:
+  #     - cnn-service-tcc
+  #     - rabbitmq-server
+  #     - kafka-tcc
+    
+volumes:
+  zookeeper_data:
+    driver: local
+  kafka_data:
+    driver: local

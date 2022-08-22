@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Prediction" ALTER COLUMN "dx" DROP NOT NULL,
+ALTER COLUMN "diseaseName" DROP NOT NULL,
+ALTER COLUMN "confidence" DROP NOT NULL;
