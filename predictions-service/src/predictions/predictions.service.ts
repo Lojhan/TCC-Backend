@@ -1,8 +1,7 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable, PreconditionFailedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { Prediction } from '@prisma/client';
-import multer from 'multer';
-import { buffer, map } from 'rxjs';
+import { map } from 'rxjs';
 import { PredictionsRepository } from 'src/database/repositories/prediction.repository';
 import { FirebaseUser } from 'src/models/user.model';
 import { UpdatePredictionDto } from './dto/update-prediction.dto';
@@ -20,6 +19,80 @@ export class PredictionsService {
     payload: Express.Multer.File,
     user: FirebaseUser,
   ): Promise<Prediction> {
+    let prediction = {} as Prediction;
+    prediction.userId = user.uid;
+    prediction.remoteImagePath = payload.path;
+    prediction.createdAt = new Date(Date.now());
+    prediction.predicted = false;
+    try {
+      const predictionResponse = await this.callCNNService(payload.path);
+      prediction.predicted = true;
+      prediction.dx = predictionResponse.dx;
+      prediction.diseaseName = predictionResponse.diseaseName;
+      prediction.confidence = predictionResponse.confidence;
+    } catch (e) {
+      console.log(e);
+    }
+    prediction = await this.predictionsRepository.create({
+      data: prediction,
+    });
+    return prediction;
+  }
+
+  async retry(
+    payload: Express.Multer.File,
+    predictionId: string,
+    user: FirebaseUser,
+  ): Promise<Prediction> {
+    const path: string = payload?.path;
+
+    let prediction =
+      predictionId &&
+      (await this.predictionsRepository.findOne({
+        where: { id: predictionId },
+      }));
+
+    if (prediction?.userId && user.id != prediction.userId) {
+      throw new UnauthorizedException();
+    }
+
+    prediction ??= {
+      predicted: false,
+      createdAt: new Date(Date.now()),
+      validated: false,
+      remoteImagePath: path,
+      userId: user.uid,
+    } as Prediction;
+
+    if (prediction.predicted) {
+      return prediction;
+    }
+
+    try {
+      const predictionResponse = await this.callCNNService(path);
+      prediction.predicted = true;
+      prediction.dx = predictionResponse.dx;
+      prediction.diseaseName = predictionResponse.diseaseName;
+      prediction.confidence = predictionResponse.confidence;
+    } catch {
+      // TODO
+    }
+
+    prediction = await this.predictionsRepository.upsert({
+      create: prediction,
+      update: prediction,
+      where: {
+        ...(prediction.id && { id: prediction.id }),
+        remoteImagePath: prediction.remoteImagePath,
+      },
+    });
+
+    console.log(prediction);
+
+    return prediction;
+  }
+
+  async callCNNService(path: string): Promise<Prediction> {
     const requestOptions = {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -27,32 +100,16 @@ export class PredictionsService {
     };
 
     const formData = new FormData();
-    formData.append('payload', fs.createReadStream(payload.path));
-    console.log(payload);
-    const predictionResult = this.httpService
+    formData.append('payload', fs.createReadStream(path));
+    return await this.httpService
       .post('http://localhost:8080/predict', formData, requestOptions)
       .pipe(map(({ data }) => data))
       .toPromise();
-
-    const prediction = {} as Prediction;
-    prediction.userId = user.uid;
-    prediction.remoteImagePath = payload.path;
-    prediction.createdAt = new Date(Date.now());
-    prediction.predicted = false;
-    try {
-      const predictionResponse: Prediction = await predictionResult;
-      prediction.predicted = true;
-      prediction.dx = predictionResponse.dx;
-      prediction.diseaseName = predictionResponse.diseaseName;
-      prediction.confidence = predictionResponse.confidence;
-    } finally {
-      await this.predictionsRepository.create({ data: prediction });
-    }
-    return prediction;
   }
 
   findAll() {
-    return `This action returns all predictions`;
+    console.log('findAll');
+    return this.predictionsRepository.findMany({});
   }
 
   findOne(id: string) {

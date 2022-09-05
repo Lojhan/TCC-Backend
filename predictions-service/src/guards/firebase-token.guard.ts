@@ -9,22 +9,35 @@ export class FirebaseTokenGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     try {
       const request: Request = context.switchToHttp().getRequest();
-      const [type, token] = request.headers.authorization?.split(' ');
+      const { authorization } = request.headers;
 
-      if (!token) return false;
-      if (typeof token !== 'string') return false;
-      if (type !== 'Bearer') return false;
-      if (token.length < 1) return false;
+      const [type, token] = authorization?.split(' ');
+
+      if (!token) return this.userNotAuthenticated('token error - no token');
+      if (typeof token !== 'string')
+        return this.userNotAuthenticated('token error - malformed token');
+      if (type !== 'Bearer')
+        return this.userNotAuthenticated('token error - wrong token type');
+      if (token.length < 1)
+        return this.userNotAuthenticated('token error - malformed token');
 
       const decodedToken = await this.firebaseService.validateToken(token);
-      if (!decodedToken) return false;
+      if (!decodedToken)
+        return this.userNotAuthenticated('token error - firebase token error');
 
-      if (decodedToken.exp < Date.now() / 1000 - 60 * 60) return false;
+      if (decodedToken.exp < Date.now() / 1000)
+        return this.userNotAuthenticated('token error - token expired');
 
       context.switchToHttp().getRequest().user = decodedToken;
+      console.log(`[USER AUTHENTICATED] - ${decodedToken.email}`);
       return true;
-    } catch {
-      return false;
+    } catch (e) {
+      return this.userNotAuthenticated('exception');
     }
+  }
+
+  userNotAuthenticated(email: string): boolean {
+    console.log(`[USER NOT AUTHENTICATED] - ${email}`);
+    return false;
   }
 }

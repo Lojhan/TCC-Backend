@@ -29,7 +29,7 @@ export class PredictionsController {
     });
   }
 
-  @Post()
+  @Post('/predict')
   @UseGuards(FirebaseTokenGuard)
   @UseInterceptors(
     FileInterceptor('payload', {
@@ -43,6 +43,23 @@ export class PredictionsController {
     @User() user: FirebaseUser,
   ) {
     return this.predictionsService.predict(file, user);
+  }
+
+  @Post('/retry')
+  @UseGuards(FirebaseTokenGuard)
+  @UseInterceptors(
+    FileInterceptor('payload', {
+      dest: 'uploads/',
+      preservePath: true,
+      storage: PredictionsController.diskStorage(),
+    }),
+  )
+  retry(
+    @UploadedFile() file: Express.Multer.File,
+    @User() user: FirebaseUser,
+    @Body('id') predictionId: string,
+  ) {
+    return this.predictionsService.retry(file, predictionId, user);
   }
 
   @Get()

@@ -2,7 +2,6 @@ import uuid
 from pydantic import BaseModel, Field
 from fastapi import UploadFile
 
-
 class PredictionPayload(BaseModel):
     payload: UploadFile = Field(..., description="File to be predicted")
 

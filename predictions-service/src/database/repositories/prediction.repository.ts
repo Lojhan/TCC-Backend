@@ -18,6 +18,9 @@ export class PredictionsRepository implements Repository<Prediction> {
   create(entity: Prisma.PredictionCreateArgs): Promise<Prediction> {
     return this.$client.prediction.create(entity);
   }
+  upsert(entity: Prisma.PredictionUpsertArgs): Promise<Prediction> {
+    return this.$client.prediction.upsert(entity);
+  }
   update(entity: Prisma.PredictionUpdateArgs): Promise<Prediction> {
     return this.$client.prediction.update(entity);
   }
