@@ -1,2 +1,5 @@
 *.pyc
 predictions-service/uploads/*
+
+kafka_data
+zookeeper_data

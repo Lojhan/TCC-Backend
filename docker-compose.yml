@@ -42,46 +42,46 @@ services:
       - ALLOW_PLAINTEXT_LISTENER=yes
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
       - KAFKA_CFG_LISTENERS=CLIENT://:9092,EXTERNAL://:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka-tcc:9092,EXTERNAL://kafka-tcc:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka-tcc:9092,EXTERNAL://localhost:9093
       - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=CLIENT
     networks:
       - tcc
     depends_on:
       - zookeeper
-  cnn-service-tcc: 
-    container_name: cnn-service-tcc
-    build: 
-      context: ./cnn-service
-      dockerfile: Dockerfile
-    ports:
-      - '8080:80'
-    working_dir: /app
-    command: python main.py
-    networks:
-      - tcc
-    volumes:
-      - ./cnn-service:/app
-    depends_on:
-      - rabbitmq-server 
-      - kafka-tcc
-  predictions-service-tcc:
-    container_name: predictions-service-tcc
-    image: node:18.7.0
-    environment:
-      - DATABASE_URL=postgres://postgres:postgres@postgres-tcc:5432/tcc
-      - KAFKA_URL=kafka-tcc:9092
-    ports:
-      - '3000:3000'
-    working_dir: /app
-    command: npm run start:dev
-    networks:
-      - tcc
-    volumes:
-      - ./predictions-service:/app
-    depends_on:
-      - cnn-service-tcc
-      - rabbitmq-server
-      - kafka-tcc
+  # cnn-service-tcc: 
+  #   container_name: cnn-service-tcc
+  #   build: 
+  #     context: ./cnn-service
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - '8080:80'
+  #   working_dir: /app
+  #   command: python main.py
+  #   networks:
+  #     - tcc
+  #   volumes:
+  #     - ./cnn-service:/app
+  #   depends_on:
+  #     - rabbitmq-server 
+  #     - kafka-tcc
+  # predictions-service-tcc:
+  #   container_name: predictions-service-tcc
+  #   image: node:18.7.0
+  #   environment:
+  #     - DATABASE_URL=postgres://postgres:postgres@postgres-tcc:5432/tcc
+  #     - KAFKA_URL=kafka-tcc:9092
+  #   ports:
+  #     - '3000:3000'
+  #   working_dir: /app
+  #   command: npm run start:dev
+  #   networks:
+  #     - tcc
+  #   volumes:
+  #     - ./predictions-service:/app
+  #   depends_on:
+  #     - cnn-service-tcc
+  #     - rabbitmq-server
+  #     - kafka-tcc
     
 volumes:
   zookeeper_data:

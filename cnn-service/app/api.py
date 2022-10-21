@@ -7,22 +7,25 @@ from aiokafka import ConsumerRecord
 loop = asyncio.get_event_loop()
 app = FastAPI()
 app.include_router(router, tags=["root"])
-kafka = KafkaAdaptor.getInstance()
+
+kafkaTCC = KafkaAdaptor.getInstance('tcc')
+kafkaPrediction = KafkaAdaptor.getInstance('prediction-confirmation')
 
 def printMessage(msg: ConsumerRecord):
     print('message received ' + str(msg.value))
 
 @app.on_event("startup")
 async def startup_event():
-    kafka.assignCallback(printMessage)
-    await kafka.initialize()
-    await kafka.startConsume()
+    kafkaTCC.assignCallback(printMessage)
+    kafkaPrediction.assignCallback(printMessage)
+    await KafkaAdaptor.initializeAll()
     
 @app.on_event("shutdown")
 async def shutdown_event():
-    await kafka.__exit__()
+    await KafkaAdaptor.stopAllInstances()
 
 @app.get("/message")
 async def message():
-    await kafka.sendMessage("Hello World")
+    await kafkaTCC.sendMessage("Hello World tcc")
+    await kafkaPrediction.sendMessage("Hello World prediction")
     return {"message": "Message sent"}

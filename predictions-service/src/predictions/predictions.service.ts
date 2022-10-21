@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Prediction } from '@prisma/client';
 import { map } from 'rxjs';
 import { PredictionsRepository } from 'src/database/repositories/prediction.repository';
@@ -7,13 +7,22 @@ import { FirebaseUser } from 'src/models/user.model';
 import { UpdatePredictionDto } from './dto/update-prediction.dto';
 import fs from 'fs';
 import FormData from 'form-data';
+import { MessagingService } from 'src/messaging/messaging.service';
+import { MessagingFactory } from 'src/messaging/messaging.module';
 
 @Injectable()
 export class PredictionsService {
+  predictionConfirmationTopic: MessagingService;
   constructor(
     private readonly predictionsRepository: PredictionsRepository,
     private readonly httpService: HttpService,
-  ) {}
+    @Inject('messaging-factory')
+    @Inject('messaging-factory')
+    private readonly factory: MessagingFactory,
+  ) {
+    this.predictionConfirmationTopic = this.factory.create('tcc');
+    this.predictionConfirmationTopic.send('prediction-confirmation');
+  }
 
   async predict(
     payload: Express.Multer.File,
